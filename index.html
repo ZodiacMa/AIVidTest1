@@ -5,9 +5,8 @@
   <title>通义万相视频换人本地测试台</title>
   <style>
     :root {
-      color-scheme: light dark;
       font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      background-color: #f5f7fa;
+      background-color: #eef2f7;
       color: #1f2937;
     }
 
@@ -57,6 +56,7 @@
       border-radius: 8px;
       border: 1px solid #cbd5e1;
       background: #fff;
+      color: #0f172a;
       transition: border-color 0.2s ease;
     }
 
@@ -66,6 +66,11 @@
       border-color: #2563eb;
       outline: none;
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #9ca3af;
     }
 
     button {
@@ -392,6 +397,22 @@
     }
 
     /**
+     * 规整 API 根地址，避免重复协议或路径导致请求失败
+     */
+    function normalizeBaseUrl(rawUrl) {
+      if (!rawUrl) throw new Error('请先填写有效的 URL');
+      try {
+        const parsed = new URL(rawUrl);
+        if (!['https:', 'http:'].includes(parsed.protocol)) {
+          throw new Error('URL 协议需为 http 或 https');
+        }
+        return parsed.origin;
+      } catch (error) {
+        throw new Error('URL 格式不正确，请以 https://xxx.supabase.co 形式填写');
+      }
+    }
+
+    /**
      * 向阿里云百炼 API 发送请求
      */
     async function requestBailian(path, { method = 'GET', token, body } = {}) {
@@ -409,6 +430,35 @@
         body: body ? JSON.stringify(body) : undefined,
       });
       const text = await resp.text();
+      return handleBailianResponse(resp, text);
+    }
+
+    /**
+     * 根据接口返回生成友好的 403 提示
+     */
+    function buildForbiddenMessage(data) {
+      if (!data) return '百炼接口返回 403 Forbidden';
+      if (typeof data === 'string') return `百炼接口返回 403：${data}`;
+      const detail = data.message || data.error_msg || data.code;
+      return detail
+        ? `百炼接口返回 403：${detail}。请确认 Token 已开通 wan2.2-animate-mix 服务，且该接口允许从当前来源调用。`
+        : '百炼接口返回 403 Forbidden，请确认 Token 权限或改用服务端代理调用。';
+    }
+
+    /**
+     * 封装 403 错误，保留 code 便于后续识别
+     */
+    function wrapForbiddenError(data) {
+      const message = buildForbiddenMessage(data);
+      const error = new Error(message);
+      error.code = 'FORBIDDEN';
+      return error;
+    }
+
+    /**
+     * 统一处理百炼接口响应，保证日志完整
+     */
+    function handleBailianResponse(resp, text) {
       let data;
       try {
         data = text ? JSON.parse(text) : {};
@@ -416,6 +466,9 @@
         data = { raw: text };
       }
       appendLog('DEBUG', `百炼响应 ${resp.status}`, data);
+      if (resp.status === 403) {
+        throw wrapForbiddenError(data);
+      }
       if (!resp.ok) {
         throw new Error(data.message || data.error_msg || `百炼接口返回异常，HTTP ${resp.status}`);
       }
@@ -433,11 +486,12 @@
       if (!supabaseUrl || !supabaseKey || !bucket) {
         throw new Error('请先在 Supabase 区域填写 URL、Key 和存储桶名称');
       }
+      const baseUrl = normalizeBaseUrl(supabaseUrl);
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const safeName = file.name.replace(/\s+/g, '_');
       const pathSegments = [folder, `${timestamp}-${safeName}`].filter(Boolean);
-      const objectPath = pathSegments.join('/');
-      const uploadUrl = `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/${encodeURIComponent(bucket)}/${objectPath}`;
+      const objectPath = pathSegments.map(encodeURIComponent).join('/');
+      const uploadUrl = new URL(`/storage/v1/object/${encodeURIComponent(bucket)}/${objectPath}`, baseUrl).toString();
 
       appendLog('INFO', `开始上传至 Supabase：${objectPath}`);
       const resp = await fetch(uploadUrl, {
@@ -454,7 +508,7 @@
       if (!(resp.status === 200 || resp.status === 201)) {
         throw new Error(`Supabase 上传失败（HTTP ${resp.status}）：${resultText}`);
       }
-      const publicUrl = `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${objectPath}`;
+      const publicUrl = new URL(`/storage/v1/object/public/${encodeURIComponent(bucket)}/${objectPath}`, baseUrl).toString();
       appendLog('INFO', 'Supabase 上传完成，生成公开访问地址', { publicUrl });
       return publicUrl;
     }
@@ -469,7 +523,15 @@
         setStatus(supabaseStatus, '请填写 Supabase URL 与 API Key 后再检测', 'error');
         return;
       }
-      const testUrl = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/?apikey=${encodeURIComponent(supabaseKey)}`;
+      let baseUrl;
+      try {
+        baseUrl = normalizeBaseUrl(supabaseUrl);
+      } catch (error) {
+        appendLog('ERROR', 'Supabase URL 校验失败', error.message);
+        setStatus(supabaseStatus, `Supabase URL 格式错误：${error.message}`, 'error');
+        return;
+      }
+      const testUrl = new URL('/rest/v1/?select=1', baseUrl).toString();
       appendLog('DEBUG', '开始检测 Supabase 凭证', { testUrl });
       try {
         const resp = await fetch(testUrl, {
@@ -477,14 +539,21 @@
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`,
+            'Accept': 'application/json',
+            'Prefer': 'count=none',
           },
         });
         const text = await resp.text();
         appendLog('DEBUG', `Supabase 健康检查响应 ${resp.status}`, text);
         if (resp.status === 401 || resp.status === 403) {
           setStatus(supabaseStatus, 'Supabase 返回未授权，请确认 Key 权限是否允许访问存储服务', 'error');
-        } else if (resp.ok) {
-          setStatus(supabaseStatus, 'Supabase 服务可访问，如需上传请确认存储桶已公开', 'success');
+        } else if (resp.ok || resp.status === 404) {
+          const tip = resp.status === 404
+            ? 'Supabase 服务可访问（接口返回 404 属于预期，因为未指定数据表）'
+            : 'Supabase 服务可访问，如需上传请确认存储桶已公开';
+          setStatus(supabaseStatus, tip, 'success');
+        } else if (resp.type === 'opaqueredirect') {
+          setStatus(supabaseStatus, 'Supabase 返回重定向，请检查 URL 是否填写为项目根域名', 'error');
         } else {
           setStatus(supabaseStatus, `Supabase 检测返回状态 ${resp.status}，请检查日志`, 'error');
         }
