@@ -27,6 +27,79 @@
 - 页面底部的“调试日志”会记录所有关键步骤，包括请求地址、参数、响应内容和异常信息。
 - 浏览器控制台（F12）同样会输出同步日志，便于进一步排查。
 
+## CORS 研究与代理部署指南
+
+### 跨域策略结论
+
+- 根据阿里云 API 网关跨域说明（https://help.aliyun.com/zh/api-gateway/traditional-api-gateway/user-guide/cross-origin-resource-sharing），若服务端未返回 `Access-Control-Allow-Origin`、`Access-Control-Allow-Methods` 等响应头，浏览器会在预检阶段拦截请求。百炼公共域名（`dashscope-intl.aliyuncs.com` 等）未开放任意来源跨域，因此直接在浏览器调用必然报 `Failed to fetch`。
+- 浏览器日志中若出现 `TypeError: Failed to fetch` 且网络层无请求记录，即可判定为 CORS 预检失败。页面脚本会识别该错误并提示“请改用代理”。
+- 解决方案：在可控环境部署转发服务，由代理向百炼 API 发起请求，并在代理响应中补齐跨域相关响应头，再将结果返回给浏览器。
+
+### 免费代理托管方案
+
+1. **Cloudflare Workers**（永久免费额度）
+   1. 在 Cloudflare 控制台选择 “Workers & Pages” → “Create application” → “Create Worker”。
+   2. 将以下脚本粘贴至在线编辑器，点击 “Deploy”。
+
+      ```js
+      export default {
+        async fetch(request) {
+          const url = new URL(request.url);
+          const target = 'https://dashscope-intl.aliyuncs.com' + url.pathname.replace(/^\/dashscope/, '') + url.search;
+          const init = {
+            method: request.method,
+            headers: new Headers(request.headers),
+            body: request.body,
+          };
+          const resp = await fetch(target, init);
+          const newHeaders = new Headers(resp.headers);
+          newHeaders.set('Access-Control-Allow-Origin', '*');
+          newHeaders.set('Access-Control-Allow-Headers', '*');
+          newHeaders.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+          return new Response(resp.body, { status: resp.status, headers: newHeaders });
+        },
+      };
+      ```
+
+   3. 发布后可获得 `https://<子域>.workers.dev/dashscope` 形式的代理地址，将其填入页面的“百炼代理地址”。
+
+2. **Vercel Edge Functions**（每月免费额度）
+   1. 在 Vercel 新建项目，目录结构中创建 `api/dashscope.ts`，写入：
+
+      ```ts
+      export const config = { runtime: 'edge' };
+
+      export default async function handler(request: Request) {
+        const url = new URL(request.url);
+        const target = 'https://dashscope-intl.aliyuncs.com' + url.pathname.replace(/^\/api\/dashscope/, '') + url.search;
+        const init: RequestInit = {
+          method: request.method,
+          headers: request.headers,
+          body: request.body,
+        };
+        const resp = await fetch(target, init);
+        const headers = new Headers(resp.headers);
+        headers.set('Access-Control-Allow-Origin', '*');
+        headers.set('Access-Control-Allow-Headers', '*');
+        headers.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+        if (request.method === 'OPTIONS') {
+          return new Response(null, { status: 204, headers });
+        }
+        return new Response(resp.body, { status: resp.status, headers });
+      }
+      ```
+
+   2. 执行 `vercel deploy` 或使用 Web UI 部署，得到形如 `https://<项目>.vercel.app/api/dashscope` 的地址。
+   3. 在页面中填写该地址后，再次点击“检测百炼服务可用性”确保代理可达。
+
+3. **本地/自建网关**
+   - 若项目需要内网访问，可在 Nginx、Express、函数计算或公司统一 API 网关中部署转发逻辑，核心是：
+     - 请求路径按需重写并转发到 `https://dashscope-intl.aliyuncs.com`。
+     - 响应头补充 `Access-Control-Allow-Origin`（可设置为 `*` 或指定页面域名）及常见自定义头部。
+     - OPTIONS 预检请求直接返回 204 或 200，并带上相同的跨域响应头。
+
+完成代理部署后，推荐在浏览器外使用 `curl -H "Authorization: Bearer <Token>" <代理地址>/api/v1/tasks?limit=1` 验证代理可用，再回到页面执行检测。README 底部“常见问题”章节继续保留 Node/Express 示例，方便快速落地。
+
 ## 常见问题与排查记录
 
 ### 百炼 API 返回 403 或浏览器报跨域
@@ -91,6 +164,10 @@
 
 ## 版本记录
 
+- v1.4.0（2024-09-14）
+  - 新增 CORS 研究与代理部署指南，提供 Cloudflare Workers 与 Vercel Edge Functions 免费托管示例。
+  - 页面内补充跨域/代理展开说明，检测到官方域名时立即给出禁止提示。
+  - Supabase 行级安全排查步骤沉淀为展开卡片，指引权限策略调整。
 - v1.3.0（2024-09-13）
   - 新增百炼代理地址配置项，强制通过本地或服务端代理调用以绕过浏览器 CORS 限制。
   - 请求流程在代理校验失败时提供即时提示，并将代理地址记录到调试日志，方便排查。

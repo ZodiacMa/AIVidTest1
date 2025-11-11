@@ -104,6 +104,30 @@
       box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25);
     }
 
+    details {
+      margin-top: 8px;
+      background: #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #0f172a;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    details p,
+    details ol {
+      margin: 8px 0;
+    }
+
+    details code {
+      background: rgba(15, 23, 42, 0.08);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
     .flex {
       display: flex;
       flex-wrap: wrap;
@@ -223,6 +247,16 @@
           百炼官方 API 不允许浏览器直接跨域访问，请在本地或可信后端部署转发服务并填写地址。
           例如使用 Node/Express/Nginx 代理到 https://dashscope-intl.aliyuncs.com。
         </div>
+        <details>
+          <summary>跨域与免费托管指南（展开查看）</summary>
+          <p>根据阿里云 API 网关跨域说明，服务端需在响应中显式返回 <code>Access-Control-Allow-Origin</code> 等字段才能被浏览器访问。百炼公共域名未开放任意来源，因此必须通过自建代理。</p>
+          <ol>
+            <li><strong>本地代理</strong>：可使用 Node/Express、Nginx 或 <code>curl --proxy</code> 等方式，将 <code>/dashscope</code> 路径转发到 <code>https://dashscope-intl.aliyuncs.com</code>，并设置允许跨域的响应头。</li>
+            <li><strong>Cloudflare Workers（免费）</strong>：在 Cloudflare 控制台创建 Worker，粘贴 README 中提供的示例代码，部署后即可获得 https://&lt;子域&gt;.workers.dev 形式的代理地址。</li>
+            <li><strong>Vercel Edge Functions（免费额度）</strong>：在 Vercel 新建项目，使用 README 中的代理代码，部署后获取 https://&lt;项目&gt;.vercel.app/api/dashscope 作为代理路径。</li>
+            <li>若需企业级稳定性，可在公司内部网关或函数计算部署，确保响应头允许来源 <code>*</code> 或页面访问域。</li>
+          </ol>
+        </details>
       </div>
       <div>
         <button id="btn-check-bailian" type="button">检测百炼服务可用性</button>
@@ -258,6 +292,15 @@
     <div class="note">
       默认 anon key 受行级安全（RLS）限制，如遇 403 需在 Storage -> Policies 中为目标桶放行 INSERT/SELECT，或改用 Service Role Key。
     </div>
+    <details>
+      <summary>Supabase 行级安全排查步骤</summary>
+      <ol>
+        <li>登录 Supabase 控制台，进入 <strong>Storage &gt; Buckets</strong>，选择目标桶。</li>
+        <li>切换到 <strong>Policies</strong> 标签页，新建策略：<code>auth.role() = 'anon'</code> 且 <code>request.method() = 'POST'</code> 允许 INSERT；同理再建一条允许 SELECT。</li>
+        <li>若暂不希望开放匿名写入，可改用 <strong>Project Settings &gt; API</strong> 中的 <code>service_role</code> Key，并确保该 Key 仅在可信环境中使用。</li>
+        <li>完成策略调整后，点击上方“检测 Supabase 凭证”验证权限是否已生效。</li>
+      </ol>
+    </details>
     <div class="flex">
       <div>
         <button id="btn-check-supabase" type="button" class="secondary">检测 Supabase 凭证</button>
@@ -445,6 +488,18 @@
         if (parsed.search || parsed.hash) {
           throw new Error('代理地址无需附带查询参数或锚点，请填写纯粹的代理根路径');
         }
+        const bailianDomains = [
+          'dashscope.aliyuncs.com',
+          'dashscope-intl.aliyuncs.com',
+          'dashscope.aliyuncs.com.cn',
+        ];
+        if (bailianDomains.some((domain) => parsed.hostname.endsWith(domain))) {
+          appendLog('WARN', '检测到使用百炼官方域名，浏览器将被跨域策略拦截，请改用自建代理', {
+            suggestion: '可参考页面中的“跨域与免费托管指南”部署 Cloudflare Worker 或 Vercel 代理',
+            currentUrl: parsed.toString(),
+          });
+          throw new Error('百炼官方域名未开放浏览器跨域访问，请填写您部署的代理服务地址');
+        }
         return parsed.toString().replace(/\/+$/, '');
       } catch (error) {
         throw new Error(`代理地址格式不正确：${error.message}`);
@@ -497,7 +552,7 @@
       if (error instanceof TypeError && (lower.includes('failed to fetch') || lower.includes('networkerror'))) {
         const corsMessage = [
           '百炼请求被浏览器拦截：接口未公开 CORS 允许列表。',
-          '请改用本地/服务端代理转发请求，或在可信后端调用百炼 API。',
+          '请改用本地/服务端代理转发请求（可参阅页面内指南和 README 中的跨域研究章节）。',
           url ? ` 当前请求地址：${url}。` : '',
           ` 原始错误：${message}`,
         ].join('');
