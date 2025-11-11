@@ -211,10 +211,24 @@
     </div>
     <div class="flex">
       <div>
+        <label>百炼代理地址（必填，用于解决 CORS）
+          <input
+            id="bailian-proxy"
+            type="url"
+            placeholder="例如：http://localhost:8787/dashscope"
+            value="http://localhost:8787/dashscope"
+          />
+        </label>
+        <div class="note">
+          百炼官方 API 不允许浏览器直接跨域访问，请在本地或可信后端部署转发服务并填写地址。
+          例如使用 Node/Express/Nginx 代理到 https://dashscope-intl.aliyuncs.com。
+        </div>
+      </div>
+      <div>
         <button id="btn-check-bailian" type="button">检测百炼服务可用性</button>
       </div>
     </div>
-    <div id="bailian-status" class="status">等待检测</div>
+    <div id="bailian-status" class="status">请先填写代理地址并检测</div>
   </fieldset>
 
   <fieldset>
@@ -240,6 +254,9 @@
           <input id="supabase-folder" type="text" placeholder="video-assets" />
         </label>
       </div>
+    </div>
+    <div class="note">
+      默认 anon key 受行级安全（RLS）限制，如遇 403 需在 Storage -> Policies 中为目标桶放行 INSERT/SELECT，或改用 Service Role Key。
     </div>
     <div class="flex">
       <div>
@@ -415,9 +432,41 @@
     /**
      * 向阿里云百炼 API 发送请求
      */
+    function resolveBailianBaseUrl() {
+      const raw = getValue('bailian-proxy');
+      if (!raw) {
+        throw new Error('由于浏览器同源策略限制，请在“百炼代理地址”中填写您部署的代理服务地址');
+      }
+      try {
+        const parsed = new URL(raw, window.location.href);
+        if (!['https:', 'http:'].includes(parsed.protocol)) {
+          throw new Error('代理地址需以 http 或 https 开头');
+        }
+        if (parsed.search || parsed.hash) {
+          throw new Error('代理地址无需附带查询参数或锚点，请填写纯粹的代理根路径');
+        }
+        return parsed.toString().replace(/\/+$/, '');
+      } catch (error) {
+        throw new Error(`代理地址格式不正确：${error.message}`);
+      }
+    }
+
+    function joinBailianUrl(path) {
+      const base = resolveBailianBaseUrl();
+      const normalizedBase = base.replace(/\/+$/, '');
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      return `${normalizedBase}${normalizedPath}`;
+    }
+
     async function requestBailian(path, { method = 'GET', token, body } = {}) {
       if (!token) throw new Error('请先填写百炼 API Token');
-      const url = `https://dashscope-intl.aliyuncs.com${path}`;
+      let url;
+      try {
+        url = joinBailianUrl(path);
+      } catch (error) {
+        appendLog('ERROR', '百炼代理地址校验失败', error.message || error);
+        throw error;
+      }
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -433,7 +482,7 @@
         });
       } catch (error) {
         appendLog('ERROR', '百炼请求未能发出或被浏览器拦截', { error: error?.message || error });
-        throw wrapBailianNetworkError(error);
+        throw wrapBailianNetworkError(error, url);
       }
       const text = await resp.text();
       return handleBailianResponse(resp, text);
@@ -442,14 +491,15 @@
     /**
      * 将浏览器层的网络错误包装为更清晰的跨域提示
      */
-    function wrapBailianNetworkError(error) {
+    function wrapBailianNetworkError(error, url) {
       const message = (error && error.message) || '';
       const lower = message.toLowerCase();
       if (error instanceof TypeError && (lower.includes('failed to fetch') || lower.includes('networkerror'))) {
         const corsMessage = [
           '百炼请求被浏览器拦截：接口未公开 CORS 允许列表。',
           '请改用本地/服务端代理转发请求，或在可信后端调用百炼 API。',
-          `原始错误：${message}`,
+          url ? ` 当前请求地址：${url}。` : '',
+          ` 原始错误：${message}`,
         ].join('');
         const err = new Error(corsMessage);
         err.code = 'CORS';
@@ -619,8 +669,18 @@
         return;
       }
       try {
+        const base = resolveBailianBaseUrl();
+        appendLog('DEBUG', '使用百炼代理地址', { base });
+      } catch (error) {
+        appendLog('ERROR', '百炼代理地址校验失败', error.message || error);
+        setStatus(bailianStatus, `代理地址错误：${error.message}`, 'error');
+        return;
+      }
+      try {
         const data = await requestBailian('/api/v1/tasks?limit=1', { method: 'GET', token });
-        const msg = data && Array.isArray(data.data) ? '成功访问百炼任务列表接口' : '百炼接口调用成功';
+        const msg = data && Array.isArray(data.data)
+          ? '成功访问百炼任务列表接口（代理连通）'
+          : '百炼接口调用成功（代理连通）';
         setStatus(bailianStatus, msg, 'success');
       } catch (error) {
         appendLog('ERROR', '百炼检测失败', error);

@@ -5,7 +5,7 @@
 ## 功能亮点
 
 - ✅ 单页应用：所有 HTML、CSS、JavaScript 代码均在 `index.html` 中，下载后即可离线保存使用。
-- ✅ 双重预检：支持对百炼 Token 以及 Supabase 凭证进行接口连通性检测。
+- ✅ 双重预检：支持对百炼 Token / 代理连通性以及 Supabase 凭证进行接口检测。
 - ✅ 文件上传：本地素材可直接上传至 Supabase 指定存储桶，并自动生成公开链接。
 - ✅ 全链路调试日志：完整记录所有外部接口的请求、响应、警告和错误，方便快速定位问题。
 - ✅ 异步轮询：自动根据用户配置的频率轮询任务状态，直至成功、失败或达到最大次数。
@@ -14,7 +14,7 @@
 ## 使用指南
 
 1. 打开 `index.html`，在浏览器中访问。
-2. 在“服务配置”区域填写百炼 API Token（建议使用新加坡区域 Token），点击“检测百炼服务可用性”。
+2. 在“服务配置”区域依次填写百炼 API Token（建议使用新加坡区域 Token）和**百炼代理地址**，点击“检测百炼服务可用性”。
 3. 如需上传本地素材，在“Supabase”区域填写 URL、API Key、存储桶名称和可选目录，可先点击“检测 Supabase 凭证”。
 4. 在“视频换人任务配置”区域填写目标视频、参考人脸及可选音频的地址，或直接上传本地文件。
 5. 设置任务描述、轮询间隔与最大轮询次数，点击“发起视频换人任务”。
@@ -36,6 +36,42 @@
   2. **服务端返回 403 Forbidden**：即便请求成功送达，也可能因 Token 权限不足或模型未开通而收到 403。日志中会完整记录响应体，便于核对账号是否已开通 `wan2.2-animate-mix` 及 `wan-std/wan-pro` 服务模式。
 - 建议排查顺序：先通过命令行（如 `curl`）在同一网络环境验证 Token 是否可用，再确认浏览器调用是否被跨域策略阻止。如需长期使用，推荐将百炼调用收敛到可信后端服务。
 
+#### 本地代理示例（Node.js Express）
+
+1. 新建 `proxy.js`，写入以下内容（Node.js >= 16）：
+
+   ```js
+   const express = require('express');
+   const { createProxyMiddleware } = require('http-proxy-middleware');
+
+   const app = express();
+
+   app.use(
+     '/dashscope',
+     createProxyMiddleware({
+       target: 'https://dashscope-intl.aliyuncs.com',
+       changeOrigin: true,
+       pathRewrite: { '^/dashscope': '' },
+       logLevel: 'debug',
+     })
+   );
+
+   app.listen(8787, () => {
+     console.log('DashScope proxy listening on http://localhost:8787/dashscope');
+   });
+   ```
+
+2. 安装依赖并启动：
+
+   ```bash
+   npm install express http-proxy-middleware
+   node proxy.js
+   ```
+
+3. 在页面的“百炼代理地址”中填写 `http://localhost:8787/dashscope`，其余逻辑保持不变。
+
+   > 也可以使用 Nginx、云函数或 API 网关等方式进行代理，只需确保浏览器能够访问到该代理域名即可。
+
 ### Supabase 健康检查 URL 异常
 
 - 反馈中的 URL 形如 `https://vrlzrypzoqreadqhttps//...`，原因是手动字符串拼接导致协议重复。
@@ -55,6 +91,10 @@
 
 ## 版本记录
 
+- v1.3.0（2024-09-13）
+  - 新增百炼代理地址配置项，强制通过本地或服务端代理调用以绕过浏览器 CORS 限制。
+  - 请求流程在代理校验失败时提供即时提示，并将代理地址记录到调试日志，方便排查。
+  - 文档补充 Node.js 代理部署示例，方便快速搭建调试环境。
 - v1.2.0（2024-09-12）
   - 新增百炼调用跨域（CORS）错误识别与提示，明确需要通过代理或后端调用。
   - Supabase 上传针对 `row-level security` 报错提供中文引导，辅助排查权限策略。
