@@ -29,19 +29,24 @@
 
 ## 常见问题与排查记录
 
-### 百炼 API 返回 403
+### 百炼 API 返回 403 或浏览器报跨域
 
-- 已通过浏览器与命令行复现：从本地 HTML 直接调用 `https://dashscope-intl.aliyuncs.com/api/v1/tasks` 会返回 403。
-- 官方文档强调百炼 Token 需绑定可用区域，同时部分高敏模型不允许浏览器直接调用，必须通过可信后端代理。结合响应报文中的 `Forbidden` 提示，可以判定：
-  1. Token 未开通 `wan2.2-animate-mix` 权限或额度；
-  2. 百炼国际站对浏览器来源进行了封禁，需要在服务端中转。
-- 页面现已针对 403 增加友好提示，并建议用户改用服务端代理或联系阿里云开通权限。
+- 直接在浏览器中访问 `https://dashscope-intl.aliyuncs.com/api/v1/tasks` 会遇到两类问题：
+  1. **浏览器跨域拦截（CORS）**：接口未配置允许任意来源访问，因此浏览器会直接报 `TypeError: Failed to fetch`。页面现在会捕获该错误并提示“请通过本地/服务端代理转发请求”。建议在本地搭建反向代理（如使用 Node/Express、Nginx 或阿里云函数计算）后再调用百炼 API。
+  2. **服务端返回 403 Forbidden**：即便请求成功送达，也可能因 Token 权限不足或模型未开通而收到 403。日志中会完整记录响应体，便于核对账号是否已开通 `wan2.2-animate-mix` 及 `wan-std/wan-pro` 服务模式。
+- 建议排查顺序：先通过命令行（如 `curl`）在同一网络环境验证 Token 是否可用，再确认浏览器调用是否被跨域策略阻止。如需长期使用，推荐将百炼调用收敛到可信后端服务。
 
 ### Supabase 健康检查 URL 异常
 
 - 反馈中的 URL 形如 `https://vrlzrypzoqreadqhttps//...`，原因是手动字符串拼接导致协议重复。
 - 页面新增 `normalizeBaseUrl` 方法，统一使用 `URL` 对象拼装接口地址，避免重复协议或多余斜杠。
 - 健康检查现在兼容 404（因未指定数据表），并增加 URL 格式校验提示，防止误填导致的 `ERR_NAME_NOT_RESOLVED`。
+
+### Supabase 上传返回 `row-level security` 报错
+
+- Supabase 对 Storage/数据库默认开启行级安全（Row Level Security）。当使用 `anon` 公钥上传文件时，如果未显式放行 `INSERT/SELECT`，接口会返回 `{"error":"Unauthorized","message":"new row violates row-level security policy"}`。
+- 页面在上传及健康检查阶段都会识别该报错，并给出“请在 Storage -> Policies 中放权或改用 Service Role Key”的中文提示。
+- 处理建议：登录 Supabase 控制台，进入目标存储桶，打开 `Policies`，为 `anon` 角色添加允许 `INSERT` / `SELECT` 的策略；若不方便修改策略，可在本地开发阶段改用 `service_role` Key，并确保在前端使用时妥善保护。
 
 ## 已知限制
 
@@ -50,6 +55,10 @@
 
 ## 版本记录
 
+- v1.2.0（2024-09-12）
+  - 新增百炼调用跨域（CORS）错误识别与提示，明确需要通过代理或后端调用。
+  - Supabase 上传针对 `row-level security` 报错提供中文引导，辅助排查权限策略。
+  - 健康检查在遇到授权失败时区分 RLS 与一般权限问题，便于精准定位。
 - v1.1.0（2024-09-11）
   - 优化输入控件视觉可读性，修复浅色背景下文字不可见的问题。
   - 新增 Supabase URL 规整逻辑与错误提示，解决健康检查因 URL 拼接出错导致的 DNS 解析失败。

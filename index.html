@@ -424,13 +424,42 @@
         'Accept': 'application/json',
       };
       appendLog('DEBUG', `请求百炼 ${method} ${url}`, body);
-      const resp = await fetch(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      let resp;
+      try {
+        resp = await fetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch (error) {
+        appendLog('ERROR', '百炼请求未能发出或被浏览器拦截', { error: error?.message || error });
+        throw wrapBailianNetworkError(error);
+      }
       const text = await resp.text();
       return handleBailianResponse(resp, text);
+    }
+
+    /**
+     * 将浏览器层的网络错误包装为更清晰的跨域提示
+     */
+    function wrapBailianNetworkError(error) {
+      const message = (error && error.message) || '';
+      const lower = message.toLowerCase();
+      if (error instanceof TypeError && (lower.includes('failed to fetch') || lower.includes('networkerror'))) {
+        const corsMessage = [
+          '百炼请求被浏览器拦截：接口未公开 CORS 允许列表。',
+          '请改用本地/服务端代理转发请求，或在可信后端调用百炼 API。',
+          `原始错误：${message}`,
+        ].join('');
+        const err = new Error(corsMessage);
+        err.code = 'CORS';
+        err.cause = error;
+        return err;
+      }
+      const err = new Error(message ? `百炼请求发送失败：${message}` : '百炼请求发送失败，请检查网络连接');
+      err.code = 'NETWORK';
+      err.cause = error;
+      return err;
     }
 
     /**
@@ -506,7 +535,15 @@
       const resultText = await resp.text();
       appendLog('DEBUG', `Supabase 上传响应 ${resp.status}`, resultText);
       if (!(resp.status === 200 || resp.status === 201)) {
-        throw new Error(`Supabase 上传失败（HTTP ${resp.status}）：${resultText}`);
+        let hint = '';
+        if ((resp.status === 400 || resp.status === 401 || resp.status === 403) && /row-level security/i.test(resultText)) {
+          hint = [
+            '。提示：Supabase 默认启用行级安全，',
+            '请在 Storage -> Policies 中为 anon key 开放 INSERT/SELECT 权限，',
+            '或改用 Service Role Key 上传文件',
+          ].join('');
+        }
+        throw new Error(`Supabase 上传失败（HTTP ${resp.status}）：${resultText}${hint}`);
       }
       const publicUrl = new URL(`/storage/v1/object/public/${encodeURIComponent(bucket)}/${objectPath}`, baseUrl).toString();
       appendLog('INFO', 'Supabase 上传完成，生成公开访问地址', { publicUrl });
@@ -546,7 +583,16 @@
         const text = await resp.text();
         appendLog('DEBUG', `Supabase 健康检查响应 ${resp.status}`, text);
         if (resp.status === 401 || resp.status === 403) {
-          setStatus(supabaseStatus, 'Supabase 返回未授权，请确认 Key 权限是否允许访问存储服务', 'error');
+          if (/row-level security/i.test(text)) {
+            const rlsTip = [
+              'Supabase 返回未授权：',
+              '请在 Storage/数据库策略中为当前 Key 开放访问权限，',
+              '或使用 Service Role Key',
+            ].join('');
+            setStatus(supabaseStatus, rlsTip, 'error');
+          } else {
+            setStatus(supabaseStatus, 'Supabase 返回未授权，请确认 Key 权限是否允许访问存储服务', 'error');
+          }
         } else if (resp.ok || resp.status === 404) {
           const tip = resp.status === 404
             ? 'Supabase 服务可访问（接口返回 404 属于预期，因为未指定数据表）'
