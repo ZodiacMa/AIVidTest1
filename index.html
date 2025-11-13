@@ -206,8 +206,8 @@
 <body>
   <h1>通义万相（wan2.2-animate-mix）视频换人本地测试台</h1>
   <p>
-    本页面为单页本地工具，帮助快速验证阿里云百炼通义万相视频换人能力。请确保填写的 Token、Supabase
-    Key 等均为您自己的凭证，谨慎保管。所有接口调用的请求、响应、警告和报错都会在底部调试日志中完整记录，方便排查。
+    本页面为单页本地工具，帮助快速验证阿里云百炼通义万相视频换人能力。已根据需求将百炼 Token、代理地址、Supabase 凭证等配置信息预填入页面，
+    请妥善保管并在可信环境中使用。所有接口调用的请求、响应、警告和报错都会在底部调试日志中完整记录，方便排查。
   </p>
 
   <fieldset>
@@ -215,9 +215,9 @@
     <div class="flex">
       <div>
         <label>百炼 API Token
-          <input id="bailian-token" type="text" placeholder="sk-****************" value="" />
+          <input id="bailian-token" type="text" placeholder="sk-****************" value="sk-7c32cf2fa28546738e38e470ea192545" />
         </label>
-        <div class="note">建议使用新加坡区域 Token。不会保存在服务器，仅在本地浏览器内使用。</div>
+        <div class="note">已预填新加坡区域 Token，仅在本地浏览器内使用，不会上传到其他服务。</div>
       </div>
       <div>
         <label>选择服务模式
@@ -240,20 +240,19 @@
             id="bailian-proxy"
             type="url"
             placeholder="例如：http://localhost:8787/dashscope"
-            value="http://localhost:8787/dashscope"
+            value="https://dashscope-proxy-vrlzrypzoq.workers.dev"
           />
         </label>
         <div class="note">
-          百炼官方 API 不允许浏览器直接跨域访问，请在本地或可信后端部署转发服务并填写地址。
-          例如使用 Node/Express/Nginx 代理到 https://dashscope-intl.aliyuncs.com。
+          百炼官方 API 不允许浏览器直接跨域访问，默认使用 Cloudflare Worker 代理。若需自定义，请部署新的代理并在此处更新。
         </div>
         <details>
           <summary>跨域与免费托管指南（展开查看）</summary>
           <p>根据阿里云 API 网关跨域说明，服务端需在响应中显式返回 <code>Access-Control-Allow-Origin</code> 等字段才能被浏览器访问。百炼公共域名未开放任意来源，因此必须通过自建代理。</p>
           <ol>
             <li><strong>本地代理</strong>：可使用 Node/Express、Nginx 或 <code>curl --proxy</code> 等方式，将 <code>/dashscope</code> 路径转发到 <code>https://dashscope-intl.aliyuncs.com</code>，并设置允许跨域的响应头。</li>
-            <li><strong>Cloudflare Workers（免费）</strong>：在 Cloudflare 控制台创建 Worker，粘贴 README 中提供的示例代码，部署后即可获得 https://&lt;子域&gt;.workers.dev 形式的代理地址。</li>
-            <li><strong>Vercel Edge Functions（免费额度）</strong>：在 Vercel 新建项目，使用 README 中的代理代码，部署后获取 https://&lt;项目&gt;.vercel.app/api/dashscope 作为代理路径。</li>
+            <li><strong>Cloudflare Workers（免费）</strong>：在控制台创建 Worker，粘贴仓库内 <code>proxy-worker.js</code> 脚本并部署，即可获得 https://&lt;子域&gt;.workers.dev/dashscope 作为代理地址。</li>
+            <li><strong>Vercel Edge Functions（免费额度）</strong>：在 Vercel 新建项目，参考 README 中的 TypeScript 代理示例部署到 <code>/api/dashscope</code>。</li>
             <li>若需企业级稳定性，可在公司内部网关或函数计算部署，确保响应头允许来源 <code>*</code> 或页面访问域。</li>
           </ol>
         </details>
@@ -262,7 +261,7 @@
         <button id="btn-check-bailian" type="button">检测百炼服务可用性</button>
       </div>
     </div>
-    <div id="bailian-status" class="status">请先填写代理地址并检测</div>
+    <div id="bailian-status" class="status">正在自动检测百炼代理服务连通性...</div>
   </fieldset>
 
   <fieldset>
@@ -275,22 +274,28 @@
       </div>
       <div>
         <label>Supabase API Key
-          <input id="supabase-key" type="text" value="" placeholder="eyJhbGciOi..." />
+          <input
+            id="supabase-key"
+            type="text"
+            value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZybHpyeXB6b3FyZWFkcWVueHZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3ODk1NjEsImV4cCI6MjA3ODM2NTU2MX0.iPhQea2XTUzleA6f8rZk7Vt6RmSlMN3-gZg4atGZm88"
+            placeholder="eyJhbGciOi..."
+          />
         </label>
       </div>
       <div>
         <label>存储桶名称（需已存在且公开）
-          <input id="supabase-bucket" type="text" placeholder="例如：public-assets" />
+          <input id="supabase-bucket" type="text" value="wan-assets" placeholder="例如：public-assets" />
         </label>
       </div>
       <div>
         <label>上传目录（可选，例如 video-assets）
-          <input id="supabase-folder" type="text" placeholder="video-assets" />
+          <input id="supabase-folder" type="text" value="video-uploads" placeholder="video-assets" />
         </label>
       </div>
     </div>
     <div class="note">
       默认 anon key 受行级安全（RLS）限制，如遇 403 需在 Storage -> Policies 中为目标桶放行 INSERT/SELECT，或改用 Service Role Key。
+      页面已默认填入 Supabase 项目与目标桶名称，如需更换请同步更新。
     </div>
     <details>
       <summary>Supabase 行级安全排查步骤</summary>
@@ -306,7 +311,7 @@
         <button id="btn-check-supabase" type="button" class="secondary">检测 Supabase 凭证</button>
       </div>
     </div>
-    <div id="supabase-status" class="status">如无需上传素材可跳过此步骤</div>
+    <div id="supabase-status" class="status">正在自动检测 Supabase 存储服务...</div>
   </fieldset>
 
   <fieldset>
@@ -379,7 +384,19 @@
   </fieldset>
 
   <script>
-    // ======= 工具函数区域 =======
+    // ======= 预设配置与工具函数区域 =======
+    const DEFAULT_CONFIG = Object.freeze({
+      bailianToken: 'sk-7c32cf2fa28546738e38e470ea192545',
+      bailianProxy: 'https://dashscope-proxy-vrlzrypzoq.workers.dev',
+      modelId: 'wan2.2-animate-mix',
+      serviceMode: 'wan-pro',
+      supabaseUrl: 'https://vrlzrypzoqreadqenxvx.supabase.co',
+      supabaseKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZybHpyeXB6b3FyZWFkcWVueHZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3ODk1NjEsImV4cCI6MjA3ODM2NTU2MX0.iPhQea2XTUzleA6f8rZk7Vt6RmSlMN3-gZg4atGZm88',
+      supabaseBucket: 'wan-assets',
+      supabaseFolder: 'video-uploads',
+    });
+
     const state = {
       pollTimer: null,
       currentTaskId: null,
@@ -391,6 +408,49 @@
     const supabaseStatus = document.getElementById('supabase-status');
     const taskStatus = document.getElementById('task-status');
     const resultArea = document.getElementById('result-area');
+
+    function hydrateDefaults() {
+      const mapping = {
+        'bailian-token': 'bailianToken',
+        'bailian-proxy': 'bailianProxy',
+        'model-id': 'modelId',
+        'supabase-url': 'supabaseUrl',
+        'supabase-key': 'supabaseKey',
+        'supabase-bucket': 'supabaseBucket',
+        'supabase-folder': 'supabaseFolder',
+      };
+      Object.entries(mapping).forEach(([elementId, configKey]) => {
+        const el = document.getElementById(elementId);
+        if (el && DEFAULT_CONFIG[configKey]) {
+          el.value = DEFAULT_CONFIG[configKey];
+        }
+      });
+      const modeSelect = document.getElementById('service-mode');
+      if (modeSelect && DEFAULT_CONFIG.serviceMode) {
+        modeSelect.value = DEFAULT_CONFIG.serviceMode;
+      }
+    }
+
+    hydrateDefaults();
+    setStatus(bailianStatus, '正在自动检测百炼代理服务连通性...', '');
+    setStatus(supabaseStatus, '正在自动检测 Supabase 存储服务...', '');
+
+    function registerFileChange(inputId, label) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.addEventListener('change', () => {
+        if (input.files && input.files[0]) {
+          const file = input.files[0];
+          appendLog('INFO', `${label} 已选择文件`, {
+            name: file.name,
+            size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+            type: file.type,
+          });
+        } else {
+          appendLog('WARN', `${label} 文件选择已清空`);
+        }
+      });
+    }
 
     /**
      * 在调试日志面板中记录信息
@@ -658,11 +718,14 @@
     /**
      * 预检 Supabase 凭证是否可用
      */
-    async function checkSupabase() {
+    async function checkSupabase(options = {}) {
+      const { auto = false } = options;
       const supabaseUrl = getValue('supabase-url');
       const supabaseKey = getValue('supabase-key');
       if (!supabaseUrl || !supabaseKey) {
-        setStatus(supabaseStatus, '请填写 Supabase URL 与 API Key 后再检测', 'error');
+        if (!auto) {
+          setStatus(supabaseStatus, '请填写 Supabase URL 与 API Key 后再检测', 'error');
+        }
         return;
       }
       let baseUrl;
@@ -904,13 +967,24 @@
     }
 
     // ======= 事件绑定 =======
-    document.getElementById('btn-check-bailian').addEventListener('click', checkBailian);
-    document.getElementById('btn-check-supabase').addEventListener('click', checkSupabase);
+    document.getElementById('btn-check-bailian').addEventListener('click', () => checkBailian());
+    document.getElementById('btn-check-supabase').addEventListener('click', () => checkSupabase());
     document.getElementById('btn-start').addEventListener('click', startTask);
     document.getElementById('btn-stop').addEventListener('click', () => stopPolling('用户手动停止'));
+    registerFileChange('target-video-file', '目标视频');
+    registerFileChange('ref-image-file', '参考人脸');
+    registerFileChange('audio-file', '音频');
 
     // ======= 页面初始化提示 =======
-    appendLog('INFO', '页面已加载，等待用户配置参数');
+    appendLog('INFO', '页面已加载，默认配置已填充，正在执行健康检查');
+    checkSupabase({ auto: true }).catch((error) => {
+      appendLog('WARN', '自动 Supabase 检测失败，可手动重试', error && error.message);
+    });
+    setTimeout(() => {
+      checkBailian().catch((error) => {
+        appendLog('WARN', '自动百炼检测失败，可手动重试', error && error.message);
+      });
+    }, 600);
   </script>
 </body>
 </html>
