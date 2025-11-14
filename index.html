@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>通义万相视频换人本地测试台</title>
+  <style>
+    :root {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background-color: #eef2f7;
+      color: #1f2937;
+    }
+
+    body {
+      margin: 0 auto;
+      padding: 24px;
+      max-width: 1080px;
+      line-height: 1.6;
+      background: #fff;
+      box-shadow: 0 12px 36px rgba(31, 41, 55, 0.12);
+      border-radius: 16px;
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+      color: #0d47a1;
+    }
+
+    fieldset {
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      padding: 16px 20px;
+      background: #f8fafc;
+    }
+
+    legend {
+      font-weight: bold;
+      padding: 0 12px;
+      color: #0f172a;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #0f172a;
+      transition: border-color 0.2s ease;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #2563eb;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #9ca3af;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 12px;
+      margin-top: 6px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    button.secondary {
+      background: #475569;
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25);
+    }
+
+    details {
+      margin-top: 8px;
+      background: #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #0f172a;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    details p,
+    details ol {
+      margin: 8px 0;
+    }
+
+    details code {
+      background: rgba(15, 23, 42, 0.08);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .flex {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .flex > div {
+      flex: 1 1 280px;
+      min-width: 280px;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 10px;
+      background: #e0f2fe;
+      color: #0c4a6e;
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .log-area {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 12px;
+      padding: 16px;
+      height: 320px;
+      overflow: auto;
+      font-family: "Fira Code", "Consolas", monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .video-preview {
+      margin-top: 12px;
+    }
+
+    video {
+      max-width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+    }
+
+    .note {
+      font-size: 13px;
+      color: #475569;
+      margin-top: -6px;
+      margin-bottom: 12px;
+    }
+
+    .section-header {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #1d4ed8;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>通义万相（wan2.2-animate-mix）视频换人本地测试台</h1>
+  <p>
+    本页面为单页本地工具，帮助快速验证阿里云百炼通义万相视频换人能力。已根据需求将百炼 Token、代理地址、Supabase 凭证等配置信息预填入页面，
+    请妥善保管并在可信环境中使用。所有接口调用的请求、响应、警告和报错都会在底部调试日志中完整记录，方便排查。
+  </p>
+
+  <fieldset>
+    <legend>① 服务配置（请先完成）</legend>
+    <div class="flex">
+      <div>
+        <label>百炼 API Token
+          <input id="bailian-token" type="text" placeholder="sk-****************" value="sk-7c32cf2fa28546738e38e470ea192545" />
+        </label>
+        <div class="note">已预填新加坡区域 Token，仅在本地浏览器内使用，不会上传到其他服务。</div>
+      </div>
+      <div>
+        <label>选择服务模式
+          <select id="service-mode">
+            <option value="wan-std">标准模式（wan-std）</option>
+            <option value="wan-pro">专业模式（wan-pro）</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>模型版本
+          <input id="model-id" type="text" value="wan2.2-animate-mix" />
+        </label>
+      </div>
+    </div>
+    <div class="flex">
+      <div>
+        <label>百炼代理地址（必填，用于解决 CORS）
+          <input
+            id="bailian-proxy"
+            type="url"
+            placeholder="例如：http://localhost:8787/dashscope"
+            value="https://dashscope-proxy-vrlzrypzoq.workers.dev"
+          />
+        </label>
+        <div class="note">
+          百炼官方 API 不允许浏览器直接跨域访问，默认使用 Cloudflare Worker 代理。若需自定义，请部署新的代理并在此处更新。
+        </div>
+        <details>
+          <summary>跨域与免费托管指南（展开查看）</summary>
+          <p>根据阿里云 API 网关跨域说明，服务端需在响应中显式返回 <code>Access-Control-Allow-Origin</code> 等字段才能被浏览器访问。百炼公共域名未开放任意来源，因此必须通过自建代理。</p>
+          <ol>
+            <li><strong>本地代理</strong>：可使用 Node/Express、Nginx 或 <code>curl --proxy</code> 等方式，将 <code>/dashscope</code> 路径转发到 <code>https://dashscope-intl.aliyuncs.com</code>，并设置允许跨域的响应头。</li>
+            <li><strong>Cloudflare Workers（免费）</strong>：在控制台创建 Worker，粘贴仓库内 <code>proxy-worker.js</code> 脚本并部署，即可获得 https://&lt;子域&gt;.workers.dev/dashscope 作为代理地址。</li>
+            <li><strong>Vercel Edge Functions（免费额度）</strong>：在 Vercel 新建项目，参考 README 中的 TypeScript 代理示例部署到 <code>/api/dashscope</code>。</li>
+            <li>若需企业级稳定性，可在公司内部网关或函数计算部署，确保响应头允许来源 <code>*</code> 或页面访问域。</li>
+          </ol>
+        </details>
+      </div>
+      <div>
+        <button id="btn-check-bailian" type="button">检测百炼服务可用性</button>
+      </div>
+    </div>
+    <div id="bailian-status" class="status">正在自动检测百炼代理服务连通性...</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>② Supabase（如需托管素材）</legend>
+    <div class="flex">
+      <div>
+        <label>Supabase URL
+          <input id="supabase-url" type="url" value="https://vrlzrypzoqreadqenxvx.supabase.co" />
+        </label>
+      </div>
+      <div>
+        <label>Supabase API Key
+          <input
+            id="supabase-key"
+            type="text"
+            value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZybHpyeXB6b3FyZWFkcWVueHZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3ODk1NjEsImV4cCI6MjA3ODM2NTU2MX0.iPhQea2XTUzleA6f8rZk7Vt6RmSlMN3-gZg4atGZm88"
+            placeholder="eyJhbGciOi..."
+          />
+        </label>
+      </div>
+      <div>
+        <label>存储桶名称（需已存在且公开）
+          <input id="supabase-bucket" type="text" value="wan-assets" placeholder="例如：public-assets" />
+        </label>
+      </div>
+      <div>
+        <label>上传目录（可选，例如 video-assets）
+          <input id="supabase-folder" type="text" value="video-uploads" placeholder="video-assets" />
+        </label>
+      </div>
+    </div>
+    <div class="note">
+      默认 anon key 受行级安全（RLS）限制，如遇 403 需在 Storage -> Policies 中为目标桶放行 INSERT/SELECT，或改用 Service Role Key。
+      页面已默认填入 Supabase 项目与目标桶名称，如需更换请同步更新。
+    </div>
+    <details>
+      <summary>Supabase 行级安全排查步骤</summary>
+      <ol>
+        <li>登录 Supabase 控制台，进入 <strong>Storage &gt; Buckets</strong>，选择目标桶。</li>
+        <li>切换到 <strong>Policies</strong> 标签页，新建策略：<code>auth.role() = 'anon'</code> 且 <code>request.method() = 'POST'</code> 允许 INSERT；同理再建一条允许 SELECT。</li>
+        <li>若暂不希望开放匿名写入，可改用 <strong>Project Settings &gt; API</strong> 中的 <code>service_role</code> Key，并确保该 Key 仅在可信环境中使用。</li>
+        <li>完成策略调整后，点击上方“检测 Supabase 凭证”验证权限是否已生效。</li>
+      </ol>
+    </details>
+    <div class="flex">
+      <div>
+        <button id="btn-check-supabase" type="button" class="secondary">检测 Supabase 凭证</button>
+      </div>
+    </div>
+    <div id="supabase-status" class="status">正在自动检测 Supabase 存储服务...</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>③ 视频换人任务配置</legend>
+    <div class="section-header">素材来源</div>
+    <div class="note">支持填写已公开的外链，或上传文件自动存储至 Supabase 并生成外链。</div>
+    <div class="flex">
+      <div>
+        <label>目标视频 URL（包含人物待替换）
+          <input id="target-video-url" type="url" placeholder="https://.../target.mp4" />
+        </label>
+        <label>或上传目标视频文件
+          <input id="target-video-file" type="file" accept="video/*" />
+        </label>
+      </div>
+      <div>
+        <label>参考人脸图像 URL（替换所用人脸）
+          <input id="ref-image-url" type="url" placeholder="https://.../face.png" />
+        </label>
+        <label>或上传参考人脸图像
+          <input id="ref-image-file" type="file" accept="image/*" />
+        </label>
+      </div>
+      <div>
+        <label>可选：音频 URL（保留或替换音轨）
+          <input id="audio-url" type="url" placeholder="https://.../audio.mp3" />
+        </label>
+        <label>可选：上传音频文件
+          <input id="audio-file" type="file" accept="audio/*" />
+        </label>
+      </div>
+    </div>
+
+    <div class="section-header">任务参数</div>
+    <div class="flex">
+      <div>
+        <label>任务描述（便于日志记录）
+          <input id="task-desc" type="text" placeholder="示例：替换演示视频的人脸" />
+        </label>
+      </div>
+      <div>
+        <label>轮询间隔（秒）
+          <input id="poll-interval" type="number" value="8" min="3" />
+        </label>
+      </div>
+      <div>
+        <label>最大轮询次数
+          <input id="poll-max" type="number" value="40" min="1" />
+        </label>
+      </div>
+    </div>
+
+    <div>
+      <button id="btn-start" type="button">发起视频换人任务</button>
+      <button id="btn-stop" type="button" class="secondary" disabled>停止轮询</button>
+    </div>
+    <div id="task-status" class="status">尚未发起任务</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>④ 结果预览</legend>
+    <div id="result-area">
+      <p>任务完成后将在此展示处理后的视频链接，如接口返回可公开访问的 URL，将自动嵌入播放器。</p>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑤ 调试日志（完整记录请求与响应）</legend>
+    <div id="debug-log" class="log-area"></div>
+  </fieldset>
+
+  <script>
+    // ======= 预设配置与工具函数区域 =======
+    const DEFAULT_CONFIG = Object.freeze({
+      bailianToken: 'sk-7c32cf2fa28546738e38e470ea192545',
+      bailianProxy: 'https://dashscope-proxy-vrlzrypzoq.workers.dev',
+      modelId: 'wan2.2-animate-mix',
+      serviceMode: 'wan-pro',
+      supabaseUrl: 'https://vrlzrypzoqreadqenxvx.supabase.co',
+      supabaseKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZybHpyeXB6b3FyZWFkcWVueHZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3ODk1NjEsImV4cCI6MjA3ODM2NTU2MX0.iPhQea2XTUzleA6f8rZk7Vt6RmSlMN3-gZg4atGZm88',
+      supabaseBucket: 'wan-assets',
+      supabaseFolder: 'video-uploads',
+    });
+
+    const state = {
+      pollTimer: null,
+      currentTaskId: null,
+      pollingCount: 0,
+    };
+
+    const logArea = document.getElementById('debug-log');
+    const bailianStatus = document.getElementById('bailian-status');
+    const supabaseStatus = document.getElementById('supabase-status');
+    const taskStatus = document.getElementById('task-status');
+    const resultArea = document.getElementById('result-area');
+
+    function hydrateDefaults() {
+      const mapping = {
+        'bailian-token': 'bailianToken',
+        'bailian-proxy': 'bailianProxy',
+        'model-id': 'modelId',
+        'supabase-url': 'supabaseUrl',
+        'supabase-key': 'supabaseKey',
+        'supabase-bucket': 'supabaseBucket',
+        'supabase-folder': 'supabaseFolder',
+      };
+      Object.entries(mapping).forEach(([elementId, configKey]) => {
+        const el = document.getElementById(elementId);
+        if (el && DEFAULT_CONFIG[configKey]) {
+          el.value = DEFAULT_CONFIG[configKey];
+        }
+      });
+      const modeSelect = document.getElementById('service-mode');
+      if (modeSelect && DEFAULT_CONFIG.serviceMode) {
+        modeSelect.value = DEFAULT_CONFIG.serviceMode;
+      }
+    }
+
+    hydrateDefaults();
+    setStatus(bailianStatus, '正在自动检测百炼代理服务连通性...', '');
+    setStatus(supabaseStatus, '正在自动检测 Supabase 存储服务...', '');
+
+    function registerFileChange(inputId, label) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.addEventListener('change', () => {
+        if (input.files && input.files[0]) {
+          const file = input.files[0];
+          appendLog('INFO', `${label} 已选择文件`, {
+            name: file.name,
+            size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+            type: file.type,
+          });
+        } else {
+          appendLog('WARN', `${label} 文件选择已清空`);
+        }
+      });
+    }
+
+    /**
+     * 在调试日志面板中记录信息
+     * @param {string} level 日志级别：INFO/WARN/ERROR/DEBUG
+     * @param {string} message 描述信息
+     * @param {any} payload 附加数据
+     */
+    function appendLog(level, message, payload) {
+      const timestamp = new Date().toISOString();
+      const header = `[${timestamp}] [${level}] ${message}`;
+      let body = '';
+      if (payload !== undefined) {
+        try {
+          body = `\n${JSON.stringify(payload, null, 2)}`;
+        } catch (err) {
+          body = `\n${String(payload)}`;
+        }
+      }
+      logArea.textContent += `${header}${body}\n\n`;
+      logArea.scrollTop = logArea.scrollHeight;
+      console.log(header, payload);
+    }
+
+    /**
+     * 设置状态提示的便捷方法
+     */
+    function setStatus(el, message, type = '') {
+      el.textContent = message;
+      el.classList.remove('success', 'error');
+      if (type === 'success') el.classList.add('success');
+      if (type === 'error') el.classList.add('error');
+    }
+
+    /**
+     * 获取输入值的便捷方法
+     */
+    function getValue(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    /**
+     * 构造通义万相任务创建请求体
+     */
+    function buildTaskPayload({ targetVideo, refImage, audioUrl, modelId, serviceMode, taskDesc }) {
+      const payload = {
+        model: modelId,
+        input: {
+          // 文档中接口字段命名可能更新，请根据实际返回调整
+          task_type: 'video-face-swap',
+          target_video_url: targetVideo,
+          ref_image_url: refImage,
+        },
+        parameters: {
+          service_mode: serviceMode,
+        },
+        metadata: {
+          user_description: taskDesc || '通义万相视频换人测试任务',
+        },
+      };
+      if (audioUrl) {
+        payload.input.audio_url = audioUrl;
+      }
+      return payload;
+    }
+
+    /**
+     * 规整 API 根地址，避免重复协议或路径导致请求失败
+     */
+    function normalizeBaseUrl(rawUrl) {
+      if (!rawUrl) throw new Error('请先填写有效的 URL');
+      try {
+        const parsed = new URL(rawUrl);
+        if (!['https:', 'http:'].includes(parsed.protocol)) {
+          throw new Error('URL 协议需为 http 或 https');
+        }
+        return parsed.origin;
+      } catch (error) {
+        throw new Error('URL 格式不正确，请以 https://xxx.supabase.co 形式填写');
+      }
+    }
+
+    /**
+     * 向阿里云百炼 API 发送请求
+     */
+    function resolveBailianBaseUrl() {
+      const raw = getValue('bailian-proxy');
+      if (!raw) {
+        throw new Error('由于浏览器同源策略限制，请在“百炼代理地址”中填写您部署的代理服务地址');
+      }
+      try {
+        const parsed = new URL(raw, window.location.href);
+        if (!['https:', 'http:'].includes(parsed.protocol)) {
+          throw new Error('代理地址需以 http 或 https 开头');
+        }
+        if (parsed.search || parsed.hash) {
+          throw new Error('代理地址无需附带查询参数或锚点，请填写纯粹的代理根路径');
+        }
+        const bailianDomains = [
+          'dashscope.aliyuncs.com',
+          'dashscope-intl.aliyuncs.com',
+          'dashscope.aliyuncs.com.cn',
+        ];
+        if (bailianDomains.some((domain) => parsed.hostname.endsWith(domain))) {
+          appendLog('WARN', '检测到使用百炼官方域名，浏览器将被跨域策略拦截，请改用自建代理', {
+            suggestion: '可参考页面中的“跨域与免费托管指南”部署 Cloudflare Worker 或 Vercel 代理',
+            currentUrl: parsed.toString(),
+          });
+          throw new Error('百炼官方域名未开放浏览器跨域访问，请填写您部署的代理服务地址');
+        }
+        return parsed.toString().replace(/\/+$/, '');
+      } catch (error) {
+        throw new Error(`代理地址格式不正确：${error.message}`);
+      }
+    }
+
+    function joinBailianUrl(path) {
+      const base = resolveBailianBaseUrl();
+      const normalizedBase = base.replace(/\/+$/, '');
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      return `${normalizedBase}${normalizedPath}`;
+    }
+
+    async function requestBailian(path, { method = 'GET', token, body } = {}) {
+      if (!token) throw new Error('请先填写百炼 API Token');
+      let url;
+      try {
+        url = joinBailianUrl(path);
+      } catch (error) {
+        appendLog('ERROR', '百炼代理地址校验失败', error.message || error);
+        throw error;
+      }
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      appendLog('DEBUG', `请求百炼 ${method} ${url}`, body);
+      let resp;
+      try {
+        resp = await fetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch (error) {
+        appendLog('ERROR', '百炼请求未能发出或被浏览器拦截', { error: error?.message || error });
+        throw wrapBailianNetworkError(error, url);
+      }
+      const text = await resp.text();
+      return handleBailianResponse(resp, text);
+    }
+
+    /**
+     * 将浏览器层的网络错误包装为更清晰的跨域提示
+     */
+    function wrapBailianNetworkError(error, url) {
+      const message = (error && error.message) || '';
+      const lower = message.toLowerCase();
+      if (error instanceof TypeError && (lower.includes('failed to fetch') || lower.includes('networkerror'))) {
+        const corsMessage = [
+          '百炼请求被浏览器拦截：接口未公开 CORS 允许列表。',
+          '请改用本地/服务端代理转发请求（可参阅页面内指南和 README 中的跨域研究章节）。',
+          url ? ` 当前请求地址：${url}。` : '',
+          ` 原始错误：${message}`,
+        ].join('');
+        const err = new Error(corsMessage);
+        err.code = 'CORS';
+        err.cause = error;
+        return err;
+      }
+      const err = new Error(message ? `百炼请求发送失败：${message}` : '百炼请求发送失败，请检查网络连接');
+      err.code = 'NETWORK';
+      err.cause = error;
+      return err;
+    }
+
+    /**
+     * 根据接口返回生成友好的 403 提示
+     */
+    function buildForbiddenMessage(data) {
+      if (!data) return '百炼接口返回 403 Forbidden';
+      if (typeof data === 'string') return `百炼接口返回 403：${data}`;
+      const detail = data.message || data.error_msg || data.code;
+      return detail
+        ? `百炼接口返回 403：${detail}。请确认 Token 已开通 wan2.2-animate-mix 服务，且该接口允许从当前来源调用。`
+        : '百炼接口返回 403 Forbidden，请确认 Token 权限或改用服务端代理调用。';
+    }
+
+    /**
+     * 封装 403 错误，保留 code 便于后续识别
+     */
+    function wrapForbiddenError(data) {
+      const message = buildForbiddenMessage(data);
+      const error = new Error(message);
+      error.code = 'FORBIDDEN';
+      return error;
+    }
+
+    /**
+     * 统一处理百炼接口响应，保证日志完整
+     */
+    function handleBailianResponse(resp, text) {
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (err) {
+        data = { raw: text };
+      }
+      appendLog('DEBUG', `百炼响应 ${resp.status}`, data);
+      if (resp.status === 403) {
+        throw wrapForbiddenError(data);
+      }
+      if (!resp.ok) {
+        throw new Error(data.message || data.error_msg || `百炼接口返回异常，HTTP ${resp.status}`);
+      }
+      return data;
+    }
+
+    /**
+     * 调用 Supabase 上传文件，返回公开访问的 URL
+     */
+    async function uploadToSupabase(file) {
+      const supabaseUrl = getValue('supabase-url');
+      const supabaseKey = getValue('supabase-key');
+      const bucket = getValue('supabase-bucket');
+      const folder = getValue('supabase-folder');
+      if (!supabaseUrl || !supabaseKey || !bucket) {
+        throw new Error('请先在 Supabase 区域填写 URL、Key 和存储桶名称');
+      }
+      const baseUrl = normalizeBaseUrl(supabaseUrl);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const safeName = file.name.replace(/\s+/g, '_');
+      const pathSegments = [folder, `${timestamp}-${safeName}`].filter(Boolean);
+      const objectPath = pathSegments.map(encodeURIComponent).join('/');
+      const uploadUrl = new URL(`/storage/v1/object/${encodeURIComponent(bucket)}/${objectPath}`, baseUrl).toString();
+
+      appendLog('INFO', `开始上传至 Supabase：${objectPath}`);
+      const resp = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
+      });
+      const resultText = await resp.text();
+      appendLog('DEBUG', `Supabase 上传响应 ${resp.status}`, resultText);
+      if (!(resp.status === 200 || resp.status === 201)) {
+        let hint = '';
+        if ((resp.status === 400 || resp.status === 401 || resp.status === 403) && /row-level security/i.test(resultText)) {
+          hint = [
+            '。提示：Supabase 默认启用行级安全，',
+            '请在 Storage -> Policies 中为 anon key 开放 INSERT/SELECT 权限，',
+            '或改用 Service Role Key 上传文件',
+          ].join('');
+        }
+        throw new Error(`Supabase 上传失败（HTTP ${resp.status}）：${resultText}${hint}`);
+      }
+      const publicUrl = new URL(`/storage/v1/object/public/${encodeURIComponent(bucket)}/${objectPath}`, baseUrl).toString();
+      appendLog('INFO', 'Supabase 上传完成，生成公开访问地址', { publicUrl });
+      return publicUrl;
+    }
+
+    /**
+     * 预检 Supabase 凭证是否可用
+     */
+    async function checkSupabase(options = {}) {
+      const { auto = false } = options;
+      const supabaseUrl = getValue('supabase-url');
+      const supabaseKey = getValue('supabase-key');
+      if (!supabaseUrl || !supabaseKey) {
+        if (!auto) {
+          setStatus(supabaseStatus, '请填写 Supabase URL 与 API Key 后再检测', 'error');
+        }
+        return;
+      }
+      let baseUrl;
+      try {
+        baseUrl = normalizeBaseUrl(supabaseUrl);
+      } catch (error) {
+        appendLog('ERROR', 'Supabase URL 校验失败', error.message);
+        setStatus(supabaseStatus, `Supabase URL 格式错误：${error.message}`, 'error');
+        return;
+      }
+      const testUrl = new URL('/rest/v1/?select=1', baseUrl).toString();
+      appendLog('DEBUG', '开始检测 Supabase 凭证', { testUrl });
+      try {
+        const resp = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Accept': 'application/json',
+            'Prefer': 'count=none',
+          },
+        });
+        const text = await resp.text();
+        appendLog('DEBUG', `Supabase 健康检查响应 ${resp.status}`, text);
+        if (resp.status === 401 || resp.status === 403) {
+          if (/row-level security/i.test(text)) {
+            const rlsTip = [
+              'Supabase 返回未授权：',
+              '请在 Storage/数据库策略中为当前 Key 开放访问权限，',
+              '或使用 Service Role Key',
+            ].join('');
+            setStatus(supabaseStatus, rlsTip, 'error');
+          } else {
+            setStatus(supabaseStatus, 'Supabase 返回未授权，请确认 Key 权限是否允许访问存储服务', 'error');
+          }
+        } else if (resp.ok || resp.status === 404) {
+          const tip = resp.status === 404
+            ? 'Supabase 服务可访问（接口返回 404 属于预期，因为未指定数据表）'
+            : 'Supabase 服务可访问，如需上传请确认存储桶已公开';
+          setStatus(supabaseStatus, tip, 'success');
+        } else if (resp.type === 'opaqueredirect') {
+          setStatus(supabaseStatus, 'Supabase 返回重定向，请检查 URL 是否填写为项目根域名', 'error');
+        } else {
+          setStatus(supabaseStatus, `Supabase 检测返回状态 ${resp.status}，请检查日志`, 'error');
+        }
+      } catch (error) {
+        appendLog('ERROR', 'Supabase 检测异常', error);
+        setStatus(supabaseStatus, `Supabase 检测失败：${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * 检测阿里云百炼 Token 是否可用
+     */
+    async function checkBailian() {
+      const token = getValue('bailian-token');
+      if (!token) {
+        setStatus(bailianStatus, '请先填写百炼 Token', 'error');
+        return;
+      }
+      try {
+        const base = resolveBailianBaseUrl();
+        appendLog('DEBUG', '使用百炼代理地址', { base });
+      } catch (error) {
+        appendLog('ERROR', '百炼代理地址校验失败', error.message || error);
+        setStatus(bailianStatus, `代理地址错误：${error.message}`, 'error');
+        return;
+      }
+      try {
+        const data = await requestBailian('/api/v1/tasks?limit=1', { method: 'GET', token });
+        const msg = data && Array.isArray(data.data)
+          ? '成功访问百炼任务列表接口（代理连通）'
+          : '百炼接口调用成功（代理连通）';
+        setStatus(bailianStatus, msg, 'success');
+      } catch (error) {
+        appendLog('ERROR', '百炼检测失败', error);
+        setStatus(bailianStatus, `百炼检测失败：${error.message}`, 'error');
+      }
+    }
+
+    /**
+     * 停止轮询任务状态
+     */
+    function stopPolling(reason = '用户手动停止') {
+      if (state.pollTimer) {
+        clearTimeout(state.pollTimer);
+        state.pollTimer = null;
+      }
+      appendLog('WARN', '停止轮询', reason);
+      document.getElementById('btn-stop').disabled = true;
+    }
+
+    /**
+     * 渲染结果展示区
+     */
+    function renderResult(data) {
+      const { task_id, status, output } = data;
+      const container = document.createElement('div');
+      container.innerHTML = `
+        <p><strong>任务 ID：</strong>${task_id}</p>
+        <p><strong>状态：</strong>${status}</p>
+      `;
+      if (output) {
+        const urls = [];
+        if (output.video_url) urls.push({ label: '结果视频', url: output.video_url });
+        if (output.preview_url) urls.push({ label: '预览视频', url: output.preview_url });
+        if (output.resources && Array.isArray(output.resources)) {
+          output.resources.forEach((item, idx) => {
+            if (item.url) {
+              urls.push({ label: item.label || `资源 ${idx + 1}`, url: item.url });
+            }
+          });
+        }
+        if (urls.length) {
+          const list = document.createElement('ul');
+          urls.forEach((item) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="${item.url}" target="_blank" rel="noopener">${item.label}</a>`;
+            list.appendChild(li);
+          });
+          container.appendChild(list);
+          const playable = urls.find((item) => item.url.match(/\.mp4$|\.webm$|\.mov$/i));
+          if (playable) {
+            const videoWrapper = document.createElement('div');
+            videoWrapper.className = 'video-preview';
+            videoWrapper.innerHTML = `
+              <video controls src="${playable.url}" preload="metadata"></video>
+            `;
+            container.appendChild(videoWrapper);
+          }
+        }
+      }
+      resultArea.innerHTML = '';
+      resultArea.appendChild(container);
+    }
+
+    /**
+     * 轮询任务状态
+     */
+    async function pollTaskStatus(token, taskId, interval, maxTimes) {
+      state.pollingCount += 1;
+      appendLog('INFO', `第 ${state.pollingCount} 次轮询任务状态`, { taskId });
+      try {
+        const data = await requestBailian(`/api/v1/tasks/${taskId}`, { method: 'GET', token });
+        const status = data.status || data.task_status || (data.data && data.data.status);
+        if (!status) {
+          appendLog('WARN', '未能从响应中解析到状态字段', data);
+        }
+        taskStatus.textContent = `任务状态：${status || '未知'}（轮询第 ${state.pollingCount} 次）`;
+        if (status === 'SUCCEEDED' || status === 'SUCCESS' || status === 'FINISHED') {
+          setStatus(taskStatus, `任务完成：${status}`,'success');
+          renderResult(data);
+          stopPolling('任务已完成');
+          return;
+        }
+        if (status === 'FAILED' || status === 'ERROR') {
+          setStatus(taskStatus, `任务失败：${status}，请查看日志`, 'error');
+          stopPolling('任务失败');
+          return;
+        }
+        if (state.pollingCount >= maxTimes) {
+          setStatus(taskStatus, `已达到最大轮询次数 (${maxTimes})，请手动检查任务状态`, 'error');
+          stopPolling('达到最大轮询次数');
+          return;
+        }
+        state.pollTimer = setTimeout(() => pollTaskStatus(token, taskId, interval, maxTimes), interval * 1000);
+      } catch (error) {
+        appendLog('ERROR', '轮询任务失败', error);
+        setStatus(taskStatus, `轮询失败：${error.message}`, 'error');
+        stopPolling('轮询接口异常');
+      }
+    }
+
+    /**
+     * 上传文件并返回 URL，如果未选择则返回输入框值
+     */
+    async function resolveMediaUrl(inputId, fileInputId) {
+      const url = getValue(inputId);
+      if (url) return url;
+      const fileInput = document.getElementById(fileInputId);
+      if (fileInput.files && fileInput.files[0]) {
+        return uploadToSupabase(fileInput.files[0]);
+      }
+      return '';
+    }
+
+    /**
+     * 触发创建视频换人任务
+     */
+    async function startTask() {
+      const token = getValue('bailian-token');
+      const modelId = getValue('model-id');
+      const serviceMode = getValue('service-mode');
+      const taskDesc = getValue('task-desc');
+      const pollInterval = Number(getValue('poll-interval')) || 8;
+      const pollMax = Number(getValue('poll-max')) || 40;
+
+      if (!token) {
+        setStatus(taskStatus, '请先填写百炼 Token', 'error');
+        return;
+      }
+      setStatus(taskStatus, '准备上传素材并创建任务...');
+
+      try {
+        const targetVideoUrl = await resolveMediaUrl('target-video-url', 'target-video-file');
+        const refImageUrl = await resolveMediaUrl('ref-image-url', 'ref-image-file');
+        const audioUrl = await resolveMediaUrl('audio-url', 'audio-file');
+        if (!targetVideoUrl || !refImageUrl) {
+          throw new Error('目标视频与参考人脸地址不能为空，请填写或上传素材');
+        }
+        appendLog('INFO', '素材已准备', { targetVideoUrl, refImageUrl, audioUrl });
+        const payload = buildTaskPayload({
+          targetVideo: targetVideoUrl,
+          refImage: refImageUrl,
+          audioUrl,
+          modelId,
+          serviceMode,
+          taskDesc,
+        });
+        const response = await requestBailian('/api/v1/tasks', {
+          method: 'POST',
+          token,
+          body: payload,
+        });
+        const taskId = response.task_id || (response.data && response.data.task_id);
+        if (!taskId) {
+          throw new Error('未能从创建任务响应中解析到 task_id，请查看调试日志');
+        }
+        appendLog('INFO', '任务创建成功', response);
+        state.currentTaskId = taskId;
+        state.pollingCount = 0;
+        setStatus(taskStatus, `任务已提交，任务 ID：${taskId}，开始轮询...`, 'success');
+        document.getElementById('btn-stop').disabled = false;
+        pollTaskStatus(token, taskId, pollInterval, pollMax);
+      } catch (error) {
+        appendLog('ERROR', '创建任务失败', error);
+        setStatus(taskStatus, `任务创建失败：${error.message}`, 'error');
+      }
+    }
+
+    // ======= 事件绑定 =======
+    document.getElementById('btn-check-bailian').addEventListener('click', () => checkBailian());
+    document.getElementById('btn-check-supabase').addEventListener('click', () => checkSupabase());
+    document.getElementById('btn-start').addEventListener('click', startTask);
+    document.getElementById('btn-stop').addEventListener('click', () => stopPolling('用户手动停止'));
+    registerFileChange('target-video-file', '目标视频');
+    registerFileChange('ref-image-file', '参考人脸');
+    registerFileChange('audio-file', '音频');
+
+    // ======= 页面初始化提示 =======
+    appendLog('INFO', '页面已加载，默认配置已填充，正在执行健康检查');
+    checkSupabase({ auto: true }).catch((error) => {
+      appendLog('WARN', '自动 Supabase 检测失败，可手动重试', error && error.message);
+    });
+    setTimeout(() => {
+      checkBailian().catch((error) => {
+        appendLog('WARN', '自动百炼检测失败，可手动重试', error && error.message);
+      });
+    }, 600);
+  </script>
+</body>
+</html>
